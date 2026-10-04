@@ -10,7 +10,7 @@ export const whatContains: ToolDef = {
   name: 'what_contains',
   title: 'What is this point inside?',
   description:
-    'For a longitude/latitude point, return the features it falls inside in each of the named polygon layers (city limits, zoning, council district, a parcel...). ' +
+    'For a longitude/latitude point, return the features it falls inside in each of the named POLYGON layers (city limits, zoning, council district, a parcel...). ' +
     'An empty matches array means the point is inside none of that layer\'s features. Two matches can mean the point sits on a shared boundary.',
   inputSchema: {
     type: 'object',
@@ -27,6 +27,11 @@ export const whatContains: ToolDef = {
     const results = await Promise.all(layer_ids.map(async (id: string) => {
       try {
         const layer = getLayer(id);
+        // A point is never "inside" a point or a line, so an empty list here
+        // would be a confident answer to a question we cannot answer.
+        if (layer.geometry !== 'polygon') {
+          return { layer: id, error: `${id} is a ${layer.geometry} layer; what_contains only works on polygon layers. Use query_near to find ${layer.geometry} features near the point.` };
+        }
         const r = await arcgisGet(`${layer.url}/query`, {
           geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: 4326,
           spatialRel: 'esriSpatialRelIntersects', outFields: (layer.fields || ['*']).join(','), returnGeometry: false,

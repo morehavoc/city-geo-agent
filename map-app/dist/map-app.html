@@ -995,8 +995,10 @@ container holding the app. Specify either width or maxWidth, and either height o
           gBounds.extend(layer.getBounds());
         }
         // Point markers get their offset from the icon's tooltipAnchor.
-        if (g.label) layer.bindTooltip(g.label, { permanent: true, direction: 'top', className: 'poi-label' });
-        if (g.popup || g.label) layer.bindPopup('<b>' + (g.label || '') + '</b>' + (g.popup ? '<br>' + String(g.popup).replace(/</g, '&lt;') : ''));
+        // Labels and popups come from the model: escape them before they become HTML.
+        var esc = function (t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+        if (g.label) layer.bindTooltip(esc(g.label), { permanent: true, direction: 'top', className: 'poi-label' });
+        if (g.popup || g.label) layer.bindPopup('<b>' + esc(g.label || '') + '</b>' + (g.popup ? '<br>' + esc(g.popup) : ''));
         layer.addTo(map);
       });
       if (!d.bbox) { pendingCount++; noteBounds(gBounds); }

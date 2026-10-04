@@ -1,28 +1,32 @@
-# Who owns the house at 4040 NE Tillamook St?
+# Who owns 4040 NE Tillamook St?
 
-*Claude Code with Claude Opus 5.5 and this server attached, no other tools. 3 tool calls, 9 s. Run 2026-10-03; the city data changes, so your answer may differ.*
+*Claude Code with Claude Opus 5.5 and this server attached, no other tools. 4 tool calls, 13 s. Run 2026-10-03; the city data changes, so your answer may differ.*
 
 ## What the agent did
 
 1. `list_layers` {}
 2. `geocode` {"text": "4040 NE Tillamook St, Portland, OR"}
-   - *"Owner names aren't in this data, but I can still pull the parcel's public details."*
-3. `what_contains` {"lon": -122.621139, "lat": 45.537659, "layer_ids": ["taxlots", "neighborhoods", "zoning"]}
+   - *"Owner names aren't in the layer, but I can pull the parcel's public-ownership flags."*
+3. `what_contains` {"lon": -122.621139, "lat": 45.537659, "layer_ids": ["taxlots"]}
+4. `query_near` {"layer_id": "taxlots", "lon": -122.621139, "lat": 45.537659, "distance": 150, "units": "feet", "limit": 10}
 
 ## The answer
 
-I can't tell you who owns it. The parcel data I have access to (Oregon Metro's public tax lot layer) doesn't include owner names. It only says whether the owner is private or public, and this one is **private**.
+I can't give you the owner's name. The public tax lot layer (Oregon Metro RLIS `taxlots`) doesn't include owner names. It does show the **ownership type**, and for this address that's **COUNTY**, so it's publicly owned rather than private.
 
-Here's what the records show for that spot (the address matched exactly):
+The address geocoded cleanly (score 100, at -122.6211, 45.5377). The tax lot record for **4040 NE Tillamook St** shows:
 
-- **Neighborhood:** Hollywood
-- **Zoning:** CM2 (Commercial Mixed Use 2) with a Design overlay
-- **Tax lot:** land use "MFR" (multi-family residential). The record has no house number, and its size, year built, building size and assessed value are all zero.
+| Field | Value |
+|---|---|
+| Ownership type | **COUNTY** |
+| Land use | MFR (multifamily residential) |
+| Property code | 202 |
+| Year built | 2002 |
+| Building sq ft | 12,960 |
+| Total assessed value | $4,522,080 |
+| Acres | 0 (listed as zero) |
 
-That kind of record usually means the address is in a **condo or multi-unit building**. The lot I found is probably the shared or parent parcel, with each unit taxed separately. So the address may not be a single house, and each unit could have a different owner.
-
-To get the owner's name:
-- **PortlandMaps** (portlandmaps.com): search the address. It shows the owner from county assessment records.
-- **Multnomah County Assessment & Taxation**: their property search shows the owner of record, and they can provide deed records.
-
-If it's a condo, you'll need the unit number to find the right owner.
+**Things to be aware of:**
+- **Which county agency?** "COUNTY" could mean Multnomah County itself or a county housing body like Home Forward. A county-owned multifamily building from 2002 suggests affordable or supportive housing, but that's my guess, not something the data says.
+- **The parcel is split into pieces.** The lot is listed as 0 acres, and there are about 98 tax lot records within 150 ft. That's typical of a condo or stacked-lot setup. The exact geocoded point falls on a separate record with no house number and $0 value, marked PRIVATE. That's probably a shared common area, so other parts of the site may have different ownership types.
+- **For the actual owner name**, look up the address on **PortlandMaps.com** or the **Multnomah County Assessor** property search. Both show the owner of record.

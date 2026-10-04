@@ -10,7 +10,11 @@ export interface Fetched<T = any> {
 const UA = 'city-geo-agent/0.1 (+https://github.com/morehavoc/city-geo-agent)';
 const TIMEOUT_MS = 20_000;
 
-export async function arcgisGet<T = any>(base: string, params: Record<string, string | number | boolean | undefined>): Promise<Fetched<T>> {
+export async function arcgisGet<T = any>(
+  base: string,
+  params: Record<string, string | number | boolean | undefined>,
+  timeoutMs = TIMEOUT_MS,
+): Promise<Fetched<T>> {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== '') qs.set(k, String(v));
@@ -18,7 +22,7 @@ export async function arcgisGet<T = any>(base: string, params: Record<string, st
   qs.set('f', 'json');
   const url = `${base}?${qs.toString()}`;
 
-  const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(timeoutMs) });
   const text = await res.text();
   let json: any;
   try {
@@ -46,6 +50,7 @@ export const UNITS: Record<string, { esri: string; meters: number }> = {
 export function nearParams(lon: number, lat: number, distance: number, units: string) {
   const u = UNITS[units];
   if (!u) throw new Error(`units must be one of ${Object.keys(UNITS).join(', ')}`);
+  if (typeof distance !== 'number' || !Number.isFinite(distance) || distance <= 0) throw new Error('distance must be a positive number');
   return {
     geometry: `${lon},${lat}`,
     geometryType: 'esriGeometryPoint',

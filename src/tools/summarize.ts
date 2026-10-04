@@ -12,14 +12,15 @@ function notes(groups: number, maxRecords?: number) {
   return n.length ? { notes: n } : {};
 }
 
-// "How many / how much, by X?" The ArcGIS server does the maths, so there is
-// no row limit: we only ever receive one row per group.
+// "How many / how much, by X?" The ArcGIS server does the maths over every
+// matching feature; we receive one row per group (up to the service's row cap,
+// which we warn about).
 export const summarize: ToolDef = {
   name: 'summarize',
   title: 'Count or total features by group',
   description:
     'Count features, or sum/average/min/max a numeric field, grouped by another field (e.g. projects by Bureau_Name, total cost by Status). ' +
-    'Optionally filter with a where clause and/or limit to a radius around a point. Computed by the server, so it covers every feature, not a sample.',
+    'Optionally filter with a where clause and/or limit to a radius around a point. Computed by the server over every matching feature, not a sample. Note: each feature counts once, so a project mapped as several features counts several times.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -60,6 +61,7 @@ export const summarize: ToolDef = {
     let spatial = {};
     if (near) {
       checkLonLat(near.lon, near.lat);
+      if (near.distance === undefined) throw new Error('near.distance is required');
       spatial = nearParams(near.lon, near.lat, near.distance, near.units || 'miles');
     }
 

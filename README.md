@@ -28,7 +28,7 @@ claude mcp add city-geo -- node "$(pwd)/dist/stdio.js"
 claude "Is 4040 NE Tillamook St inside Portland city limits, and what is it zoned?"
 ```
 
-`npm install` also builds the server. `claude mcp add` registers it for this folder only; add `--scope user` to use it from anywhere. Check it works with `npm run smoke`, which calls every tool against the live Portland data.
+`npm install` also builds the server. `claude mcp add` registers it for this folder only; add `--scope user` to use it from anywhere. On Windows (Command Prompt), replace `"$(pwd)/dist/stdio.js"` with the full path, e.g. `"C:\Users\you\city-geo-agent\dist\stdio.js"`. Claude Code asks permission the first time it uses each tool. Check it works with `npm run smoke`, which calls every tool against the live Portland data.
 
 - **[examples/](examples/)**: nine real questions, every tool call the agent made, and its answers, including one it got only partly right and two it couldn't answer.
 - **[BUILD-IT-YOURSELF.md](BUILD-IT-YOURSELF.md)**: the prompts to give Claude Code to build one like this for your own city.
@@ -40,11 +40,11 @@ An agent can only work with what its tools let it see, so the first two tools ar
 | Tool | What it does |
 |---|---|
 | `list_layers` | Lists the layers in the catalog, each with a plain-language description. No network call: this is the agent's only map of what exists. |
-| `describe_layer` | A layer's fields, feature count, and the actual values in its short text fields, so the agent filters on `Status = 'Active'` instead of guessing. |
+| `describe_layer` | A layer's fields, feature count, and the actual values of its key text fields (when there are 15 or fewer), so the agent filters on `Status = 'Active'` instead of guessing. |
 | `geocode` | Address or place name → longitude/latitude, with up to 3 scored candidates so ambiguity is visible. Uses Esri's World Geocoder anonymously. |
-| `what_contains` | Which features a point falls inside, in each layer you name (city limits, zoning, district, parcel). An empty `matches` array means "inside none"; a layer that could not be queried returns `error` instead, never `[]`. |
+| `what_contains` | Which features a point falls inside, in each polygon layer you name (city limits, zoning, district, parcel). An empty `matches` array means "inside none"; a layer that could not be queried, or isn't a polygon layer, returns `error` instead, never `[]`. |
 | `query_near` | Features within a distance of a point, with an optional SQL filter. Returns the total count and the nearest features with their distance. |
-| `summarize` | Count, sum, average, min or max, grouped by a field, optionally within a radius. Computed by the server, so it covers every feature. |
+| `summarize` | Count, sum, average, min or max, grouped by a field, optionally within a radius. Computed by the server over every matching feature. It counts features, so a project mapped as several features counts several times. |
 | `show_map` | Bonus: draws an interactive map in the chat (MCP Apps, in Claude Desktop and claude.ai). |
 
 Every result includes `queries`: the exact ArcGIS REST URLs the tool called. Paste one into a browser to check the agent's work.
@@ -124,10 +124,11 @@ npm run smoke     # live: calls every tool against the Portland services
 - Not production code (see the top). Read-only: it cannot edit data.
 - Public layers only. Nothing here handles sign-in.
 - The anonymous geocoder is for looking things up, not for storing results (Esri's terms).
+- Each tool call hits the city's live services. Some are slow: `describe_layer` on the Metro tax lots takes about 25 seconds.
 - The answers are only as good as the source data. `describe_layer` will show you, for example, that Portland's project layer spells its status both `Active` and `ACTIVE`.
 
 ## Credits
 
-The map uses [Leaflet](https://leafletjs.com) (BSD-2-Clause), [Esri Leaflet](https://github.com/Esri/esri-leaflet) and esri-leaflet-renderers (Apache-2.0), bundled in `map-app/vendor/`. Basemaps © Esri and its data providers. Portland data: City of Portland and Oregon Metro (RLIS).
+The map uses [Leaflet](https://leafletjs.com) (BSD-2-Clause), [Esri Leaflet](https://github.com/Esri/esri-leaflet) and esri-leaflet-renderers (Apache-2.0), bundled in `map-app/vendor/`. The MCP Apps SDK (`@modelcontextprotocol/ext-apps`) and zod are bundled too. License texts: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Basemaps © Esri and its data providers. Portland data: City of Portland and Oregon Metro (RLIS).
 
 MIT License.
