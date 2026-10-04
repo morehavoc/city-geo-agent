@@ -5,6 +5,13 @@ import type { ToolDef } from './types.js';
 const STATS = ['count', 'sum', 'avg', 'min', 'max'];
 const MAX_GROUPS = 100;
 
+function notes(groups: number, maxRecords?: number) {
+  const n: string[] = [];
+  if (maxRecords && groups >= maxRecords) n.push(`The service returns at most ${maxRecords} rows, so some groups may be missing. Narrow the where clause or group by a coarser field.`);
+  if (groups > MAX_GROUPS) n.push(`${groups} groups; showing the largest ${MAX_GROUPS}.`);
+  return n.length ? { notes: n } : {};
+}
+
 // "How many / how much, by X?" The ArcGIS server does the maths, so there is
 // no row limit: we only ever receive one row per group.
 export const summarize: ToolDef = {
@@ -39,10 +46,12 @@ export const summarize: ToolDef = {
     if (!STATS.includes(stat)) throw new Error(`stat must be one of ${STATS.join(', ')}`);
     const queries: string[] = [];
 
+    const meta = await arcgisGet(layer.url, {});
+    queries.push(meta.url);
+    const maxRecords: number | undefined = meta.json.maxRecordCount;
+
     let onField = field;
     if (stat === 'count' && !onField) {
-      const meta = await arcgisGet(layer.url, {});
-      queries.push(meta.url);
       onField = meta.json.objectIdField || (meta.json.fields || []).find((f: any) => f.type === 'esriFieldTypeOID')?.name;
       if (!onField) throw new Error('Could not find an id field to count on; pass field explicitly.');
     }
@@ -77,7 +86,7 @@ export const summarize: ToolDef = {
       layer: layer.id, stat, field: stat === 'count' ? undefined : onField, group_by, where,
       ...(near ? { near: { ...near, units: near.units || 'miles' } } : {}),
       groups,
-      ...(all.length > MAX_GROUPS ? { notes: [`${all.length} groups; showing the largest ${MAX_GROUPS}.`] } : {}),
+      ...notes(all.length, maxRecords),
       queries,
     };
   },

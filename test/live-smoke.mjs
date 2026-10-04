@@ -26,6 +26,8 @@ ok(`list_layers: ${layers.layers.length} layers`);
 const desc = await call('describe_layer', { layer_id: 'cip_points' });
 const status = desc.fields.find((f) => f.name === 'Status');
 assert.ok(status && Array.isArray(status.values) && status.values.length > 0);
+const bureau = desc.fields.find((f) => f.name === 'Bureau_Name');
+assert.ok(bureau && Array.isArray(bureau.values) && bureau.values.includes('WTR'), 'catalog key fields get their values listed');
 ok(`describe_layer cip_points: ${desc.feature_count} features, Status values ${JSON.stringify(status.values)}`);
 
 const geo = await call('geocode', { text: 'Hollywood Library, Portland, OR' });

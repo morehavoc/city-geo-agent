@@ -1,16 +1,37 @@
 # city-geo-agent
 
-A small MCP server that lets an AI agent answer everyday city GIS questions using public ArcGIS layers:
+Most of what people ask a city GIS team for is a lookup. Is this address inside city limits? What's it zoned? What are we building near the library? The answer is usually already in a web map they could open, but they don't, because the map is busy, or complicated, or they'd have to learn it.
 
-- "Is this address inside city limits, and what's it zoned?"
-- "What's on this parcel?"
-- "What is the city building within a mile of the Hollywood Library?"
+An agent means they don't have to learn it. This is a small MCP server that lets an AI agent answer those questions from a city's public ArcGIS layers, with guardrails that keep the answers checkable:
 
-Plug it into Claude Code, Claude Desktop, VS Code (GitHub Copilot) or ChatGPT. The AI app runs the loop: it reads your question, picks a tool, reads the result, and decides whether it needs another tool before it answers.
+- "Is 4040 NE Tillamook St inside Portland city limits, and what is it zoned?"
+- "What's on the parcel at 1221 SW 4th Ave?"
+- "I have a town hall at the Hollywood Library on Thursday. What is the city building within a mile of it?"
+
+Plug it into Claude Code, Claude Desktop or VS Code (GitHub Copilot). The AI app runs the loop: it reads your question, picks a tool, reads the result, and decides whether it needs another tool before it answers.
 
 **No sign-in, no API key.** It ships with a catalog of public Portland, Oregon layers. Swap in your own catalog to point it at your city.
 
-Built for an episode of [Almost Entirely Human](https://christophermoravec.com). Not affiliated with or endorsed by Esri.
+> **This is not production code.** It's a working example built for a newsletter episode: no authentication, no rate limiting, no logging, and answers that a person who knows the data should check before they are used for anything official. Use it to learn and to prototype.
+
+Built for [Almost Entirely Human](https://christophermoravec.com). Not affiliated with or endorsed by Esri.
+
+## Quick start
+
+You need [Node.js](https://nodejs.org) 20 or newer and [Claude Code](https://claude.com/claude-code).
+
+```
+git clone https://github.com/morehavoc/city-geo-agent.git
+cd city-geo-agent
+npm install
+claude mcp add city-geo -- node "$(pwd)/dist/stdio.js"
+claude "Is 4040 NE Tillamook St inside Portland city limits, and what is it zoned?"
+```
+
+`npm install` also builds the server. `claude mcp add` registers it for this folder only; add `--scope user` to use it from anywhere. Check it works with `npm run smoke`, which calls every tool against the live Portland data.
+
+- **[examples/](examples/)**: nine real questions, every tool call the agent made, and its answers, including one it got only partly right and two it couldn't answer.
+- **[BUILD-IT-YOURSELF.md](BUILD-IT-YOURSELF.md)**: the prompts to give Claude Code to build one like this for your own city.
 
 ## The tools
 
@@ -28,21 +49,9 @@ An agent can only work with what its tools let it see, so the first two tools ar
 
 Every result includes `queries`: the exact ArcGIS REST URLs the tool called. Paste one into a browser to check the agent's work.
 
-## Install
+## Connect it to other apps
 
-Requires Node 20+.
-
-```
-git clone https://github.com/morehavoc/city-geo-agent.git
-cd city-geo-agent
-npm install        # also builds dist/
-```
-
-**Claude Code**
-
-```
-claude mcp add city-geo -- node /path/to/city-geo-agent/dist/stdio.js
-```
+Claude Code is covered in the quick start. Use the full path to `dist/stdio.js` in place of `/path/to/city-geo-agent` below.
 
 **Claude Desktop**: Settings → Developer → Edit Config, then add:
 
@@ -54,6 +63,8 @@ claude mcp add city-geo -- node /path/to/city-geo-agent/dist/stdio.js
 }
 ```
 
+Restart Claude Desktop. This is the app where `show_map` draws its map.
+
 **VS Code (Copilot agent mode)**: add to `.vscode/mcp.json`:
 
 ```json
@@ -64,13 +75,7 @@ claude mcp add city-geo -- node /path/to/city-geo-agent/dist/stdio.js
 }
 ```
 
-**ChatGPT, or a claude.ai custom connector**: these need a URL. Run the HTTP server somewhere public:
-
-```
-PORT=3000 npm run serve     # MCP endpoint at http://<host>:3000/mcp
-```
-
-then add `https://<your-host>/mcp` as a connector. It is stateless and read-only, so it needs no login.
+**Apps that need a URL** (ChatGPT, claude.ai custom connectors): `npm run serve` starts the same tools over HTTP at `http://localhost:3000/mcp`. You'd have to host it somewhere public yourself; read the warning at the top first.
 
 ## Use your own city
 
@@ -106,9 +111,17 @@ npm test          # offline unit tests
 npm run smoke     # live: calls every tool against the Portland services
 ```
 
+## What's in the repo
+
+- `src/tools/`: one file per tool. Start with `what-contains.ts`; it's the shortest.
+- `src/server.ts`: the MCP server: the tool list and the instructions the agent gets.
+- `catalogs/portland.json`: the layers and their descriptions.
+- `map-app/`: the interactive map behind `show_map` (Leaflet, bundled into one HTML file).
+- `examples/`: real runs.
+
 ## Limits
 
-- Read-only. It cannot edit data.
+- Not production code (see the top). Read-only: it cannot edit data.
 - Public layers only. Nothing here handles sign-in.
 - The anonymous geocoder is for looking things up, not for storing results (Esri's terms).
 - The answers are only as good as the source data. `describe_layer` will show you, for example, that Portland's project layer spells its status both `Active` and `ACTIVE`.

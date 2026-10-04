@@ -3,7 +3,7 @@ import { getLayer } from '../catalog.js';
 import type { ToolDef } from './types.js';
 
 const MAX_VALUES = 15;   // list a text field's values only if it has this many or fewer
-const MAX_PROBED = 10;   // how many text fields to probe for values
+const MAX_PROBED = 15;   // how many text fields to probe for values
 
 // Fields, types, row count, and the real values of short text fields, so the
 // agent writes Status = 'Active' instead of guessing Status = 'active'.
@@ -29,7 +29,12 @@ export const describeLayer: ToolDef = {
       .filter((f: any) => !skip.has(f.type) && !/^shape[_.]/i.test(f.name))
       .map((f: any) => ({ name: f.name, alias: f.alias !== f.name ? f.alias : undefined, type: String(f.type).replace('esriFieldType', '').toLowerCase() } as any));
 
-    const probe = fields.filter((f: any) => f.type === 'string').slice(0, MAX_PROBED);
+    // Probe the catalog's key fields first, then any other text fields.
+    const key = new Set(layer.fields || []);
+    const probe = fields
+      .filter((f: any) => f.type === 'string')
+      .sort((a: any, b: any) => Number(key.has(b.name)) - Number(key.has(a.name)))
+      .slice(0, MAX_PROBED);
     await Promise.all(probe.map(async (f: any) => {
       try {
         const r = await arcgisGet(`${layer.url}/query`, {

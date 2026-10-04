@@ -40,5 +40,10 @@
   "devDependencies": {
     "@types/node": "^26.6.4",
     "typescript": "^7.0.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/morehavoc/city-geo-agent.git"
+  },
+  "homepage": "https://github.com/morehavoc/city-geo-agent"
 }
