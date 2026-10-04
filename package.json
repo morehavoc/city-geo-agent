@@ -1,0 +1,44 @@
+{
+  "name": "city-geo-agent",
+  "version": "0.1.0",
+  "description": "A small, purpose-built MCP server that lets an AI agent answer everyday city GIS questions against public ArcGIS layers. No sign-in, no API key. Built for Almost Entirely Human.",
+  "license": "MIT",
+  "author": "Christopher Moravec (Almost Entirely Human)",
+  "type": "module",
+  "bin": {
+    "city-geo-agent": "dist/stdio.js",
+    "city-geo-agent-http": "dist/http.js"
+  },
+  "files": [
+    "dist",
+    "catalogs",
+    "map-app/dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:map": "node scripts/build-map-app.mjs",
+    "start": "node dist/stdio.js",
+    "serve": "node dist/http.js",
+    "test": "node --test test/*.test.mjs",
+    "smoke": "node test/live-smoke.mjs",
+    "prepare": "tsc"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "gis",
+    "arcgis",
+    "agent",
+    "open-data"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2"
+  }
+}

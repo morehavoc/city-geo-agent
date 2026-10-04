@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>/*__LEAFLET_CSS__*/</style>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; font-family: system-ui, sans-serif; }
+  #wrap { display: flex; flex-direction: column; height: 100%; min-height: 420px; }
+  #hdr { padding: 8px 12px; font-size: 14px; font-weight: 600; color: #222; background: #fafafa;
+         border-bottom: 1px solid #e5e5e5; display: flex; justify-content: space-between; align-items: center; }
+  #hdr .sub { font-weight: 400; color: #888; font-size: 12px; }
+  #map { flex: 1; min-height: 380px; }
+  #status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            color: #999; font-size: 13px; pointer-events: none; z-index: 500; }
+  .leaflet-popup-content { font: 12px/1.4 system-ui, sans-serif; max-height: 200px; overflow: auto; }
+  .leaflet-popup-content table { border-collapse: collapse; }
+  .leaflet-popup-content td { padding: 1px 6px 1px 0; vertical-align: top; }
+  .leaflet-popup-content td:first-child { color: #888; }
+  .poi-label { background: rgba(255,255,255,.92); border: 1px solid #ccc; border-radius: 3px;
+               font: 600 11px/1.2 system-ui, sans-serif; color: #333; padding: 2px 5px; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+</style>
+<script>/*__LEAFLET_JS__*/</script>
+<script>/*__ESRI_LEAFLET_JS__*/</script>
+<script>/*__ESRI_LEAFLET_RENDERERS_JS__*/</script>
+<script>/*__APP_SDK_JS__*/</script>
+</head>
+<body>
+<div id="wrap">
+  <div id="hdr"><span id="title">Map</span><span class="sub" id="sub"></span></div>
+  <div id="map"><div id="status">Waiting for map data…</div></div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var statusEl = document.getElementById('status');
+  function setStatus(t) { statusEl.textContent = t || ''; statusEl.style.display = t ? 'flex' : 'none'; }
+
+  // Esri raster basemap tile services (worker-free <img> tiles; the WebGL
+  // vector basemaps need blob: Workers, which MCP Apps host CSPs block).
+  var BASEMAPS = {
+    topo:     { name: 'Topographic',  url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer' },
+    imagery:  { name: 'Imagery',      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer' },
+    streets:  { name: 'Streets',      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer' },
+    gray:     { name: 'Light Gray',   url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer' },
+    'dark-gray': { name: 'Dark Gray', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer' },
+    oceans:   { name: 'Oceans',       url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer' }
+  };
+
+  function normLayers(d) {
+    if (d.layers && d.layers.length) return d.layers;
+    if (d.layerUrl) return [{ label: null, color: d.color, layerUrl: d.layerUrl, where: d.where }];
+    return [];
+  }
+
+  function renderLegend(d, layerList, graphics) {
+    var sub = document.getElementById('sub');
+    sub.innerHTML = '';
+    function chip(color, label, hollow) {
+      var el = document.createElement('span');
+      el.style.cssText = 'display:inline-flex;align-items:center;margin-right:10px;';
+      el.innerHTML = '<span style="width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:4px;' +
+        (hollow ? 'border:2px solid #999;box-sizing:border-box;' : 'background:' + color + ';') +
+        '"></span>' + label;
+      sub.appendChild(el);
+    }
+    var multi = layerList.length + (graphics.length ? 1 : 0) > 1;
+    layerList.forEach(function (L, i) {
+      if (!multi && !L.label) return;
+      // No explicit color → the layer draws with its own (service) cartography.
+      if (L.color) chip(L.color, L.label || 'Layer ' + (i + 1));
+      else chip(null, L.label || 'Layer ' + (i + 1), true);
+    });
+    if (graphics.length && multi) chip(graphics[0].color || '#2C6BED', 'Markers (' + graphics.length + ')');
+    var eng = document.createElement('span');
+    eng.textContent = (BASEMAPS[d.basemap] || BASEMAPS.topo).name + ' basemap';
+    sub.appendChild(eng);
+  }
+
+  function popupHtml(props) {
+    var rows = Object.keys(props || {}).slice(0, 12).map(function (k) {
+      var v = props[k]; if (v === null || v === '') return '';
+      var txt = String(v).slice(0, 80).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      return '<tr><td>' + String(k).replace(/</g, '&lt;') + '</td><td>' + txt + '</td></tr>';
+    }).join('');
+    return '<table>' + rows + '</table>';
+  }
+
+  function pinIcon(color) {
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42">' +
+      '<path d="M15 1C7.3 1 1 7.3 1 15c0 10.5 14 26 14 26s14-15.5 14-26C29 7.3 22.7 1 15 1z" fill="' + color +
+      '" stroke="#fff" stroke-width="1.5"/><circle cx="15" cy="15" r="5.5" fill="#fff"/></svg>';
+    return L.divIcon({ className: '', html: svg, iconSize: [30, 42], iconAnchor: [15, 41], popupAnchor: [0, -34], tooltipAnchor: [0, -44] });
+  }
+
+  // Normalize a graphic into a GeoJSON feature. Accepts {lng, lat} point
+  // shorthand or a full GeoJSON {geometry}; carries label/color/popup along.
+  function normGraphic(g, i, palette) {
+    if (!g) return null;
+    var geom = g.geometry;
+    if (!geom && typeof g.lng === 'number' && typeof g.lat === 'number') {
+      geom = { type: 'Point', coordinates: [g.lng, g.lat] };
+    }
+    if (!geom || !geom.type) return null;
+    return { geometry: geom, label: g.label || null, popup: g.popup || null,
+             color: g.color || palette[i % palette.length] };
+  }
+
+  var PALETTE = ['#C8402A', '#2C6BED', '#1F9D55', '#8B5CF6'];
+
+  function render(d) {
+    setStatus('');
+    var basemap = BASEMAPS[d.basemap] || BASEMAPS.topo;
+    var map = L.map('map', {
+      zoomControl: true,
+      scrollWheelZoom: false,     // wheel PANS (custom handler below); ctrl+wheel zooms
+      attributionControl: true
+    });
+    window.__map = map; // debug handle
+    map.attributionControl.setPrefix(false);
+    L.esri.tiledMapLayer({ url: basemap.url }).addTo(map);
+
+    // Gesture model for embedded maps: scroll/swipe PANS, pinch (ctrl+wheel on
+    // mac trackpads/magic mouse) ZOOMS, drag pans — default scroll-zoom in a
+    // chat iframe feels like zoom+pan mashed together.
+    map.getContainer().addEventListener('wheel', function (e) {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) {
+        var delta = -e.deltaY * 0.012;
+        map.setZoomAround(map.mouseEventToContainerPoint(e), map.getZoom() + delta, { animate: false });
+      } else {
+        map.panBy([e.deltaX, e.deltaY], { animate: false });
+      }
+    }, { passive: false });
+
+    var layerList = normLayers(d);
+    var graphics = (Array.isArray(d.graphics) ? d.graphics : [])
+      .map(function (g, i) { return normGraphic(g, i, PALETTE); }).filter(Boolean);
+
+    if (!layerList.length && !graphics.length) { setStatus('Nothing to draw — no layers or graphics.'); return; }
+
+    var pendingBounds = [];   // LatLngBounds to union once everything reports in
+    var pendingCount = 0;
+    function noteBounds(b) {
+      if (b && b.isValid && b.isValid()) pendingBounds.push(b);
+      if (--pendingCount <= 0 && !d.bbox && pendingBounds.length) {
+        var u = pendingBounds[0];
+        for (var i = 1; i < pendingBounds.length; i++) u = u.extend(pendingBounds[i]);
+        map.fitBounds(u.pad(0.08), { maxZoom: 14 });
+      }
+    }
+
+    if (d.bbox) {
+      map.fitBounds([[d.bbox[1], d.bbox[0]], [d.bbox[3], d.bbox[2]]], { padding: [20, 20], maxZoom: 14 });
+    } else {
+      map.setView([20, 0], 2); // placeholder until real extents arrive
+    }
+
+    // --- feature layers (esri-leaflet; renderers plugin honors the service's
+    // own drawingInfo unless an explicit color was requested). Every layer is
+    // public: no tokens, no sign-in. ---
+    function failText(label, e) {
+      var code = e && (e.code || (e.error && e.error.code));
+      var msg = (e && (e.message || (e.error && e.error.message))) || '';
+      return 'Layer "' + label + '" could not load: ' + (msg || code || 'request error');
+    }
+    layerList.forEach(function (spec, i) {
+      var label = spec.label || 'Layer ' + (i + 1);
+      var opts = {
+        url: spec.layerUrl,
+        where: spec.where || '1=1',
+        simplifyFactor: 0.35,
+        precision: 6
+      };
+      if (spec.color) {
+        opts.ignoreRenderer = true;
+        opts.style = function () { return { color: spec.color, weight: 2.5, fillOpacity: 0.25 }; };
+        opts.pointToLayer = function (gj, latlng) {
+          return L.circleMarker(latlng, { radius: 6, color: '#fff', weight: 1.5, fillColor: spec.color, fillOpacity: 0.85 });
+        };
+      } else {
+        // Safety net for point services with no usable drawingInfo.
+        opts.pointToLayer = function (gj, latlng) {
+          return L.circleMarker(latlng, { radius: 6, color: '#fff', weight: 1.5, fillColor: PALETTE[i % PALETTE.length], fillOpacity: 0.85 });
+        };
+      }
+      var fl = L.esri.featureLayer(opts).addTo(map);
+      fl.bindPopup(function (lyr) { return popupHtml(lyr.feature && lyr.feature.properties); }, { maxWidth: 320 });
+      fl.on('requesterror', function (e) { setStatus(failText(label, e)); });
+
+      if (!d.bbox) {
+        pendingCount++;
+        L.esri.query({ url: spec.layerUrl }).where(spec.where || '1=1').bounds(function (err, b) { noteBounds(err ? null : b); });
+      }
+    });
+
+    // --- graphics (client-side markers/shapes; nothing fetched) ---
+    if (graphics.length) {
+      var gBounds = L.latLngBounds([]);
+      graphics.forEach(function (g) {
+        var layer;
+        if (g.geometry.type === 'Point') {
+          var ll = [g.geometry.coordinates[1], g.geometry.coordinates[0]];
+          layer = L.marker(ll, { icon: pinIcon(g.color) });
+          gBounds.extend(ll);
+        } else {
+          layer = L.geoJSON({ type: 'Feature', geometry: g.geometry, properties: {} },
+            { style: { color: g.color, weight: 3, fillOpacity: 0.25 } });
+          gBounds.extend(layer.getBounds());
+        }
+        // Point markers get their offset from the icon's tooltipAnchor.
+        if (g.label) layer.bindTooltip(g.label, { permanent: true, direction: 'top', className: 'poi-label' });
+        if (g.popup || g.label) layer.bindPopup('<b>' + (g.label || '') + '</b>' + (g.popup ? '<br>' + String(g.popup).replace(/</g, '&lt;') : ''));
+        layer.addTo(map);
+      });
+      if (!d.bbox) { pendingCount++; noteBounds(gBounds); }
+    }
+
+    renderLegend(d, layerList, graphics);
+  }
+
+  var rendered = false;
+  function renderOnce(d) {
+    if (rendered || !d) return; rendered = true;
+    document.getElementById('title').textContent = d.title || 'Map';
+    try { render(d); } catch (e) { setStatus('Render error: ' + e.message); }
+  }
+
+  // ---- boot: official MCP Apps SDK handshake, plus standalone preview mode ----
+  // Test/debug injection: #spec=<base64 JSON> renders that spec directly (the
+  // fragment never reaches any server; used by the browser test harness).
+  if (location.hash.indexOf('#spec=') === 0) {
+    try { renderOnce(JSON.parse(atob(location.hash.slice(6)))); }
+    catch (e) { setStatus('Bad #spec payload: ' + e.message); }
+  } else if (new URLSearchParams(location.search).has('preview')) {
+    renderOnce({
+      basemap: new URLSearchParams(location.search).get('basemap') || 'topo',
+      title: 'Preview: Portland capital projects',
+      layers: [
+        { label: 'CIP points', layerUrl: 'https://www.portlandmaps.com/od/rest/services/COP_OpenData_CityProjects/MapServer/43', where: "Status IN ('Active','ACTIVE')" }
+      ],
+      graphics: [
+        { lng: -122.6205, lat: 45.5373, label: 'Hollywood', popup: 'A point of interest, no data fetch behind it.' }
+      ]
+    });
+  } else {
+    var app = new McpAppSdk.App({ name: 'city-geo-agent-map', version: '0.1.0' });
+    app.ontoolresult = function (result) {
+      if (result && result.structuredContent) renderOnce(result.structuredContent);
+      else if (result && result.isError) setStatus('Tool error — see conversation.');
+    };
+    app.onerror = function (e) { setStatus('App error: ' + (e && e.message ? e.message : e)); };
+    app.connect().then(function () {
+      setStatus('Connected — waiting for map data…');
+    }).catch(function (e) {
+      setStatus('Host connection failed: ' + (e && e.message ? e.message : e) + ' — append ?preview to test standalone.');
+    });
+  }
+})();
+</script>
+</body>
+</html>

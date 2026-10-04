@@ -1,0 +1,71 @@
+{
+  "name": "Portland, Oregon (public open data)",
+  "about": "Public layers from the City of Portland (portlandmaps.com) and Oregon Metro (RLIS). No sign-in needed. Coordinates in and out are WGS84 longitude/latitude.",
+  "center": [-122.66, 45.53],
+  "layers": [
+    {
+      "id": "city_limits",
+      "name": "City boundaries",
+      "url": "https://www.portlandmaps.com/od/rest/services/COP_OpenData_Boundary/MapServer/10",
+      "geometry": "polygon",
+      "description": "Incorporated city limits for Portland and the surrounding cities in the metro area (Gresham, Beaverton, Lake Oswego, ...). CITYNAME is the city. A point that hits no polygon is in unincorporated county land.",
+      "fields": ["CITYNAME"]
+    },
+    {
+      "id": "council_districts",
+      "name": "Portland City Council districts",
+      "url": "https://www.portlandmaps.com/od/rest/services/COP_OpenData_Boundary/MapServer/1413",
+      "geometry": "polygon",
+      "description": "The four Portland City Council districts (1-4) in place since 2025. DISTRICT is the district number; pop_total is population.",
+      "fields": ["DISTRICT", "pop_total"]
+    },
+    {
+      "id": "neighborhoods",
+      "name": "Neighborhood boundaries",
+      "url": "https://www.portlandmaps.com/od/rest/services/COP_OpenData_Boundary/MapServer/3",
+      "geometry": "polygon",
+      "description": "Portland's ~95 official neighborhood associations. NAME is the neighborhood (upper case); COALIT is the neighborhood coalition. Some areas are shared by two neighborhoods.",
+      "fields": ["NAME", "COALIT", "SHARED"]
+    },
+    {
+      "id": "zoning",
+      "name": "Zoning",
+      "url": "https://www.portlandmaps.com/od/rest/services/COP_OpenData_ZoningCode/MapServer/16",
+      "geometry": "polygon",
+      "description": "Base zoning for the City of Portland. ZONE is the code (e.g. RM1, CM2, IG1) and ZONE_DESC says what it means. OVRLY/OVRLY_DESC are overlay zones; CMP/CMP_DESC is the Comprehensive Plan designation. Only covers land Portland zones.",
+      "fields": ["ZONE", "ZONE_DESC", "OVRLY", "OVRLY_DESC", "CMP_DESC"]
+    },
+    {
+      "id": "taxlots",
+      "name": "Tax lots (parcels)",
+      "url": "https://services2.arcgis.com/McQ0OlIABe29rJJy/arcgis/rest/services/Taxlots_(Public)/FeatureServer/3",
+      "geometry": "polygon",
+      "description": "Every tax lot in the three-county Portland metro area, from Oregon Metro. SITEADDR is the site address, JURIS_CITY the city, A_T_ACRES the size, LANDUSE a short land-use code, YEARBUILT, BLDGSQFT, and assessed values (LANDVAL, BLDGVAL, TOTALVAL). PUBLIC_OWN/OWNERTYPE flag public ownership. Owner names are NOT in this public layer.",
+      "fields": ["SITEADDR", "JURIS_CITY", "A_T_ACRES", "LANDUSE", "PROP_CODE", "YEARBUILT", "BLDGSQFT", "TOTALVAL", "OWNERTYPE"]
+    },
+    {
+      "id": "cip_points",
+      "name": "Capital improvement projects (points)",
+      "url": "https://www.portlandmaps.com/od/rest/services/COP_OpenData_CityProjects/MapServer/43",
+      "geometry": "point",
+      "description": "City of Portland capital projects mapped as points (a building, an intersection). Projects are split across three layers by shape: cip_points, cip_lines and cip_polygons. To find every project near somewhere, query all three. Bureau_Name is the city bureau; Status, Phase and the Est_Construction_* dates say where the project is; Estimated_Total_Project_Cost is the budget.",
+      "fields": ["Project_Name", "Status", "Phase", "Bureau_Name", "Est_Construction_Start_Date", "Est_Construction_Comp_Date", "Estimated_Total_Project_Cost"]
+    },
+    {
+      "id": "cip_lines",
+      "name": "Capital improvement projects (lines)",
+      "url": "https://www.portlandmaps.com/od/rest/services/COP_OpenData_CityProjects/MapServer/44",
+      "geometry": "line",
+      "description": "City of Portland capital projects mapped as lines (street, sewer and pipe work along a corridor). Same fields as cip_points; query all three CIP layers for a full answer.",
+      "fields": ["Project_Name", "Status", "Phase", "Bureau_Name", "Est_Construction_Start_Date", "Est_Construction_Comp_Date", "Estimated_Total_Project_Cost"]
+    },
+    {
+      "id": "cip_polygons",
+      "name": "Capital improvement projects (areas)",
+      "url": "https://www.portlandmaps.com/od/rest/services/COP_OpenData_CityProjects/MapServer/45",
+      "geometry": "polygon",
+      "description": "City of Portland capital projects mapped as areas (parks, neighborhood-wide programs). Same fields as cip_points; query all three CIP layers for a full answer.",
+      "fields": ["Project_Name", "Status", "Phase", "Bureau_Name", "Est_Construction_Start_Date", "Est_Construction_Comp_Date", "Estimated_Total_Project_Cost"]
+    }
+  ]
+}
