@@ -33,6 +33,17 @@ claude "Is 4040 NE Tillamook St inside Portland city limits, and what is it zone
 - **[examples/](examples/)**: nine real questions, every tool call the agent made, and its answers, including one it got only partly right and two it couldn't answer.
 - **[BUILD-IT-YOURSELF.md](BUILD-IT-YOURSELF.md)**: the prompts to give Claude Code to build one like this for your own city.
 
+## How long this took
+
+Claude Code (Claude Opus 5.5) built this on the evening of 3 October 2026, from git timestamps:
+
+- **About 12 minutes** of conversation agreeing on the tools: what each one does, what it returns, what "nothing found" looks like.
+- **About 6 minutes** from an empty repo to a first working version: all seven tools, the Portland catalog, the map, tested against the live services and pushed (8:16 pm to 8:22 pm).
+- **About 13 minutes** for the nine example runs, this README and the build-it-yourself prompts.
+- **About 11 minutes** for a separate review pass, which found three ways a tool could give a complete-looking but wrong answer, plus the fixes, tests and re-run examples.
+
+About 30 minutes from an empty repo to what you're reading. The design conversation was the part that mattered.
+
 ## The tools
 
 An agent can only work with what its tools let it see, so the first two tools are for *discovery*: what data exists, and what is in it.
